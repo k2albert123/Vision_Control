@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Surveillance Control Panel</title>
+</head>
+
+<body>
+    <h1>System Status Monitor</h1>
+    <h2 id="current-state">Initializing...</h2>
+    <h3 id="certainty-level"></h3>
+    <h4 id="time-log"></h4>
+
+    <script>
+        const socket = new WebSocket("ws://localhost:9002");
+
+        socket.onmessage = function (msg) {
+            const info = JSON.parse(msg.data);
+
+            document.getElementById("current-state").innerText =
+                "Current State: " + info.status;
+
+            document.getElementById("certainty-level").innerText =
+                "Detection Certainty: " + info.confidence;
+
+            document.getElementById("time-log").innerText =
+                "Last Update: " + info.timestamp;
+        };
+    </script>
+</body>
+
+</html>
