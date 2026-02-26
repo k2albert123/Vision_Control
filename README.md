@@ -1,38 +1,26 @@
-Distributed Vision-Control System (Face-Locked Servo)
-📌 1. System Description
+# Distributed Vision-Control System (Face-Locked Servo)
+
+📌 **1. System Description**
 
 The Distributed Vision-Control System is a real-time face-tracking platform built using a distributed architecture.
-
 The system detects a human face through a PC camera and adjusts a servo motor to keep the face centered in the frame. Communication between components is handled using MQTT and WebSocket protocols.
 
-🎯 How It Works
+### 🎯 How It Works
 
-The Vision Node (PC) captures video frames.
+*   The **Vision Node (PC)** captures video frames and detects a face using OpenCV.
+*   Based on face position, it determines movement: `MOVE_LEFT`, `MOVE_RIGHT`, `CENTERED`, `NO_FACE`.
+*   It calculates an `error` offset for proportional control (Phase 2).
+*   The movement command and error are published via MQTT.
+*   The **ESP8266** receives the MQTT message and proportionally rotates the servo.
+*   The **Backend** relays MQTT updates to the web dashboard using WebSocket.
+*   The **Dashboard** displays live tracking data, confidence, and system heartbeats.
 
-The system detects a face using OpenCV.
+### 🏗 System Architecture
 
-Based on face position, it determines movement:
-
-MOVE_LEFT
-
-MOVE_RIGHT
-
-CENTERED
-
-NO_FACE
-
-The movement command is published via MQTT.
-
-The ESP8266 receives the MQTT message and rotates the servo.
-
-The Backend relays MQTT updates to the web dashboard using WebSocket.
-
-The Dashboard displays live tracking data.
-
-🏗 System Architecture
+```text
 [ PC - Vision Node ]
         |
-        | MQTT (vision/<team_id>/movement)
+        | MQTT (vision/teamone/movement & vision/teamone/heartbeat)
         v
 [ MQTT Broker ]
         |
@@ -47,88 +35,63 @@ The Dashboard displays live tracking data.
         | WebSocket (ws://localhost:9002)
         v
 [ Web Dashboard ]
+```
 
-🔑 Core Communication Rule
+### 🔑 Core Communication Rule
 
-Vision Node → Publishes via MQTT
+*   Vision Node → Publishes via MQTT
+*   ESP8266 → Subscribes via MQTT
+*   Backend → Subscribes via MQTT
+*   Dashboard → Connects via WebSocket
+*   MQTT Broker → Routes messages
+*   There are **no direct connections** between PC ↔ ESP8266 or Dashboard ↔ MQTT.
 
-ESP8266 → Subscribes via MQTT
+📡 **2. MQTT Topics Used**
 
-Backend → Subscribes via MQTT
+Each team must strictly isolate its topic namespace. 
 
-Dashboard → Connects via WebSocket
+`TEAM_NAME = "teamone"`
 
-MQTT Broker → Routes messages
-
-There are no direct connections between:
-
-PC ↔ ESP8266
-
-Dashboard ↔ MQTT
-
-📡 2. MQTT Topics Used
-
-Each team must define a unique team ID:
-
-TEAM_NAME = "TeAmOnE"
-
-Primary Movement Topic
-vision/TeAmOnE/movement
+**Primary Movement Topic**
+```text
+vision/teamone/movement
+```
 
 Message Format Example
+```json
 {
   "status": "MOVE_LEFT",
   "confidence": 0.9,
+  "error": -65,
   "timestamp": 1730000000
 }
+```
 
-Optional Heartbeat Topic
-vision/TeAmOnE/heartbeat
-
+**Heartbeat Topic**
+```text
+vision/teamone/heartbeat
+```
 
 Example:
-
+```json
 {
   "node": "pc",
   "status": "ONLINE",
   "timestamp": 1730000000
 }
+```
 
+⚠️ **Important:** Do NOT use wildcard topics. Do NOT subscribe to other teams’ topics.
 
-⚠️ Important:
+🌐 **3. Live Dashboard URL**
 
-Do NOT use wildcard topics.
+The WebSocket server runs locally on: `ws://localhost:9002`
 
-Do NOT subscribe to other teams’ topics.
+The live dashboard is accessed by opening: `dashboard/index.html`
 
-Each team must isolate its topic namespace.
+📁 **Project Structure**
 
-🌐 3. Live Dashboard URL
-
-The WebSocket server runs locally on:
-
-ws://localhost:9002
-
-
-The live dashboard is accessed by opening:
-
-dashboard/index.html
-
-
-Make sure the WebSocket connection inside index.html is:
-
-const socket = new WebSocket("ws://localhost:9002");
-
-
-When running locally, the dashboard will display:
-
-Current movement status
-
-Detection confidence
-
-Timestamp of last update
-
-📁 Project Structure
+```text
 distributed-vision-control/
 │
 ├── vision-node/
@@ -143,104 +106,66 @@ distributed-vision-control/
 ├── dashboard/
 │   └── index.html
 │
+├── mosquitto/
+│   └── mosquitto.conf
+│
+├── requirements.txt
 └── README.md
+```
 
-⚙️ Setup Instructions
-1️⃣ Install Dependencies (PC)
-pip install opencv-python paho-mqtt websockets asyncio
+⚙️ **Setup Instructions**
 
+**1️⃣ Install Dependencies (PC)**
+```bash
+pip install -r requirements.txt
+```
 
-Requirements:
+**2️⃣ Install MQTT Broker (Mosquitto)**
 
-Python 3.10+
+**Windows**
+Run Mosquitto using the provided config:
+```bash
+mosquitto -c mosquitto/mosquitto.conf -v
+```
 
-OpenCV
-
-Paho-MQTT
-
-WebSockets
-
-2️⃣ Install MQTT Broker (Mosquitto)
-Windows
-
-Run:
-
-mosquitto.exe -v
-
-Linux
+**Linux**
+```bash
 sudo apt update
 sudo apt install mosquitto mosquitto-clients
 sudo systemctl start mosquitto
+```
 
-3️⃣ Running the System
-Step 1 – Start MQTT Broker
+**3️⃣ Running the System**
 
-Windows:
+**Step 1 – Start MQTT Broker**
+(See above)
 
-mosquitto -v
-
-
-Linux:
-
-sudo systemctl start mosquitto
-
-Step 2 – Start Backend
+**Step 2 – Start Backend**
+```bash
 cd backend
 python backend.py
+```
+You should see: `WS Server active at ws://0.0.0.0:9002`
 
-
-You should see:
-
-WS Server active at ws://0.0.0.0:9002
-
-Step 3 – Run Vision Node
+**Step 3 – Run Vision Node**
+```bash
 cd vision-node
 python vision_node.py
-
-
+```
 The camera window will open and start publishing MQTT messages.
 
-Step 4 – Open Dashboard
+**Step 4 – Open Dashboard**
+Open `dashboard/index.html` in any modern web browser.
 
-Open:
+**Step 5 – Configure ESP8266**
+*   Install MicroPython.
+*   Update broker IP and WiFi credentials in `main.py`.
+*   Connect servo to GPIO5 (D1).
+*   Upload and run `main.py`.
 
-dashboard/index.html
+🚀 **Features**
 
-
-The dashboard connects to:
-
-ws://localhost:9002
-
-Step 5 – Configure ESP8266
-
-Install MicroPython.
-
-Update broker IP to your PC’s local IP.
-
-Connect servo to GPIO5 (D1).
-
-Upload and run main.py.
-
-🚀 Features
-
-Real-time face tracking
-
-Distributed MQTT-based architecture
-
-Live WebSocket dashboard
-
-Topic isolation for multi-team environments
-
-Local-only deployment (no VPS required)
-
-Supports open-loop and closed-loop tracking
-
-🏁 Operational Flow Summary
-
-Camera detects face
-→ Movement command computed
-→ MQTT message published
-→ Broker forwards message
-→ ESP8266 rotates servo
-→ Backend relays update
-→ Dashboard updates in real time
+*   Real-time face tracking with Proportional Control (Phase 2 capability).
+*   Distributed MQTT-based architecture with strict topic isolation.
+*   Live WebSocket dashboard showing statuses and system heartbeat logs.
+*   Robust connection logic for headless Edge modules (ESP8266).

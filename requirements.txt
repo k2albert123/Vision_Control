@@ -1,0 +1,4 @@
+opencv-python==4.8.1.78
+paho-mqtt==1.6.1
+websockets==12.0
+asyncio
