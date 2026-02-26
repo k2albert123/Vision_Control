@@ -1,32 +1,181 @@
-<!DOCTYPE html>
-<html>
-
-<head>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Surveillance Control Panel</title>
-</head>
+    <style>
+      :root {
+        --bg-color: #121212;
+        --card-bg: #1e1e1e;
+        --text-main: #ffffff;
+        --text-muted: #aaaaaa;
+        --accent: #bb86fc;
+        --success: #03dac6;
+        --warning: #cf6679;
+      }
 
-<body>
-    <h1>System Status Monitor</h1>
-    <h2 id="current-state">Initializing...</h2>
-    <h3 id="certainty-level"></h3>
-    <h4 id="time-log"></h4>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        padding: 20px;
+      }
+
+      .dashboard {
+        background-color: var(--card-bg);
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+        width: 100%;
+        max-width: 500px;
+        text-align: center;
+      }
+
+      h1 {
+        margin-top: 0;
+        color: var(--accent);
+        font-size: 24px;
+        margin-bottom: 30px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+      }
+
+      .status-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .data-card {
+        background-color: rgba(255, 255, 255, 0.05);
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid var(--accent);
+        text-align: left;
+        transition: all 0.3s ease;
+      }
+
+      .data-card .label {
+        font-size: 12px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+      }
+
+      .data-card .value {
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      #current-state.move_left,
+      #current-state.move_right {
+        color: var(--success);
+      }
+
+      #current-state.centered {
+        color: var(--accent);
+      }
+
+      #current-state.no_face {
+        color: var(--warning);
+      }
+
+      #connection-status {
+        margin-top: 30px;
+        font-size: 14px;
+        color: var(--warning);
+      }
+      #connection-status.connected {
+        color: var(--success);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dashboard">
+      <h1>System Status Monitor</h1>
+
+      <div class="status-container">
+        <div class="data-card">
+          <div class="label">Current State</div>
+          <div class="value" id="current-state">Initializing...</div>
+        </div>
+
+        <div class="data-card">
+          <div class="label">Detection Certainty</div>
+          <div class="value" id="certainty-level">--</div>
+        </div>
+
+        <div class="data-card">
+          <div class="label">Last Update</div>
+          <div class="value" id="time-log">--</div>
+        </div>
+
+        <div class="data-card" id="heartbeat-card" style="display: none">
+          <div class="label">Heartbeat Log</div>
+          <div class="value" id="heartbeat-log" style="font-size: 14px">--</div>
+        </div>
+      </div>
+
+      <div id="connection-status">Connecting to server...</div>
+    </div>
 
     <script>
-        const socket = new WebSocket("ws://localhost:9002");
+      // Use standard connection URL as required
+      const host = window.location.hostname || "localhost";
+      const socket = new WebSocket(`ws://${host}:9002`);
+      const connStatus = document.getElementById("connection-status");
 
-        socket.onmessage = function (msg) {
-            const info = JSON.parse(msg.data);
+      socket.onopen = function () {
+        connStatus.textContent = "Connected to Server";
+        connStatus.classList.add("connected");
+      };
 
-            document.getElementById("current-state").innerText =
-                "Current State: " + info.status;
+      socket.onclose = function () {
+        connStatus.textContent = "Disconnected from Server. Retrying...";
+        connStatus.classList.remove("connected");
+      };
 
-            document.getElementById("certainty-level").innerText =
-                "Detection Certainty: " + info.confidence;
+      socket.onmessage = function (msg) {
+        try {
+          const info = JSON.parse(msg.data);
 
-            document.getElementById("time-log").innerText =
-                "Last Update: " + info.timestamp;
-        };
+          if (info.node) {
+            // It is a heartbeat message
+            document.getElementById("heartbeat-card").style.display = "block";
+            document.getElementById("heartbeat-log").innerText =
+              `Node: ${info.node} | St: ${info.status} | Ts: ${info.timestamp}`;
+          } else if (info.status) {
+            // It is a movement message
+            const stateEl = document.getElementById("current-state");
+            stateEl.innerText = info.status;
+
+            // Update color based on status
+            stateEl.className = "value " + info.status.toLowerCase();
+
+            // Convert confidence to percentage formatted nicely
+            const conf = info.confidence
+              ? (parseFloat(info.confidence) * 100).toFixed(1) + "%"
+              : "--";
+            document.getElementById("certainty-level").innerText = conf;
+
+            // Format timestamp logically
+            const date = new Date(info.timestamp * 1000);
+            document.getElementById("time-log").innerText = info.timestamp
+              ? date.toLocaleTimeString()
+              : "--";
+          }
+        } catch (e) {
+          console.error("Failed to parse WebSocket message", e);
+        }
+      };
     </script>
-</body>
-
+  </body>
 </html>
