@@ -17,7 +17,7 @@ A robust Python 3.12 application that uses a multi-stage pipeline (Haar detectio
 
 ## 2. Interactive / Distributed System (LBPH + WebSockets)
 
-**Location:** `./Vision_Control-main/interactive/README.md`
+**Location:** `./Vision_Control/interactive/README.md`
 
 A distributed architecture designed for low-latency target tracking and live dashboard visualization. It uses an offline LBPH recognizer to track an enrolled face.
 
@@ -37,10 +37,10 @@ To get started, navigate to the specific project directory and follow the instru
 - For ArcFace-based Face Locking:
 
   ```bash
-  cd Vision_Control-main
+  cd Vision_Control
   ```
 
 - For LBPH Distributed Control & Dashboard:
   ```bash
-  cd Vision_Control-main/interactive
+  cd Vision_Control/interactive
   ```
