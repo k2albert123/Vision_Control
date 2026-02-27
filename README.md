@@ -4,7 +4,7 @@ This repository contains two distinct yet related projects focused on real-time 
 
 ## 1. Main System (ArcFace + MediaPipe + MQTT)
 
-**Location:** `./Vision_Control-main/README.md`
+**Location:** `./Vision_Control/README.md`
 
 A robust Python 3.12 application that uses a multi-stage pipeline (Haar detection → MediaPipe FaceMesh landmarks → ArcFace embeddings) to detect, recognize, and lock onto a specific target's face.
 
